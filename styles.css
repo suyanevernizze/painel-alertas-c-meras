@@ -16,12 +16,32 @@
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
 body{min-height:100vh;}
 
-.scan-line{
-  position:fixed; top:0; left:0; width:100%; height:2px;
-  background:linear-gradient(90deg, transparent, var(--teal), transparent);
-  opacity:0.5; animation:scan 6s linear infinite; pointer-events:none; z-index:50;
+.bubble-bg{
+  position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:0;
 }
-@keyframes scan{ 0%{transform:translateY(0);} 100%{transform:translateY(100vh);} }
+.bubble{
+  position:absolute; bottom:-80px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, rgba(54,194,180,0.16), rgba(91,141,239,0.05) 60%, transparent 75%);
+  border:1px solid rgba(124,138,165,0.18);
+  display:flex; align-items:center; justify-content:center;
+  animation-name:bubbleRise; animation-timing-function:ease-in; animation-iteration-count:infinite;
+  filter:drop-shadow(0 0 6px rgba(54,194,180,0.12));
+}
+.bubble .icon{ opacity:0.55; filter:grayscale(0.15) brightness(1.15); line-height:1; }
+.bubble .icon-brand{
+  font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--teal);
+  filter:none; opacity:0.5; text-shadow:0 0 8px rgba(54,194,180,0.55);
+}
+@keyframes bubbleRise{
+  0%{ transform:translateY(0) translateX(0) rotate(0deg); opacity:0; }
+  8%{ opacity:0.65; }
+  50%{ transform:translateY(-55vh) translateX(var(--drift,20px)) rotate(8deg); }
+  92%{ opacity:0.55; }
+  100%{ transform:translateY(-115vh) translateX(calc(var(--drift,20px) * -1)) rotate(-6deg); opacity:0; }
+}
+
+/* conteúdo acima do fundo de bolhas */
+header, .tabs, main, footer{ position:relative; z-index:1; }
 
 header{
   padding:28px 40px 0; border-bottom:1px solid var(--line);
