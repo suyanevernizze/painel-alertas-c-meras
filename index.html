@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel de Tratativas — Frota</title>
+<title>Painel de Alertas de Câmeras — Frota</title>
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="window.__libError='xlsx'"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" onerror="window.__libError='chart'"></script>
@@ -15,13 +15,17 @@
   <div class="brand">
     <div class="brand-mark">B</div>
     <div>
-      <h1>Painel de Tratativas — Frota</h1>
-      <div class="sub">monitoramento de alertas em tempo real // arraste a exportação para atualizar</div>
+      <h1>Painel de Alertas de Câmeras — Frota</h1>
+      <div class="sub">monitoramento de alertas em tempo real</div>
     </div>
   </div>
   <div style="display:flex; align-items:center; gap:16px;">
     <div class="filehint" id="filehint">nenhum arquivo carregado</div>
-    <button id="themeToggle" class="theme-toggle" title="Alternar modo claro/escuro" aria-label="Alternar modo claro/escuro">🌙</button>
+    <button class="reset-btn" id="resetBtn" style="margin-bottom:18px;">↺ carregar outra planilha</button>
+    <button id="themeToggle" class="theme-toggle" title="Alternar modo claro/escuro" aria-label="Alternar modo claro/escuro">
+      <svg id="themeIconMoon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="themeIconSun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v3M12 18.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+    </button>
   </div>
 </header>
 
@@ -42,9 +46,34 @@
 
   <!-- ABA: INDICADORES -->
   <div class="view" id="view-indicadores">
-    <div class="toprow">
-      <div class="meta" id="periodMeta"></div>
-      <button class="reset-btn" id="resetBtn">↺ carregar outra planilha</button>
+    <div class="toprow filters-row">
+      <div class="filters">
+        <div class="filter-field">
+          <label for="filtroPlaca">Placa</label>
+          <select id="filtroPlaca"><option value="">Todas</option></select>
+        </div>
+        <div class="filter-field">
+          <label for="filtroDataIni">De</label>
+          <input type="date" id="filtroDataIni">
+        </div>
+        <div class="filter-field">
+          <label for="filtroDataFim">Até</label>
+          <input type="date" id="filtroDataFim">
+        </div>
+        <div class="filter-field">
+          <label for="filtroPeriodoRapido">Período rápido</label>
+          <select id="filtroPeriodoRapido">
+            <option value="">Personalizado</option>
+            <option value="mes-atual">Mês atual</option>
+            <option value="mes-anterior">Mês anterior</option>
+            <option value="trimestre-atual">Trimestre atual</option>
+            <option value="semestre-atual">Semestre atual</option>
+            <option value="ano-atual">Ano atual</option>
+            <option value="ano-anterior">Ano anterior</option>
+          </select>
+        </div>
+        <button class="reset-btn" id="filtroLimpar">limpar filtros</button>
+      </div>
     </div>
 
     <div class="kpis">
