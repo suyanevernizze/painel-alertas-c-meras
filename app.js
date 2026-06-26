@@ -274,25 +274,28 @@ function renderDashboard(data) {
 function drawCharts(tipoArr, placaArr, diaArr) {
   Object.values(_charts).forEach(c => c.destroy());
   const palette = ['#5B8DEF', '#36C2B4', '#F2A33C', '#E5484D', '#9B7BFF', '#3BC9DB', '#F783AC', '#94D82D', '#FFA94D'];
+  const rootStyles = getComputedStyle(document.documentElement);
+  const mutedColor = rootStyles.getPropertyValue('--muted').trim() || '#7C8AA5';
+  const panelColor = rootStyles.getPropertyValue('--panel').trim() || '#111A2E';
   Chart.defaults.font.family = "'JetBrains Mono', monospace";
-  Chart.defaults.color = '#7C8AA5';
+  Chart.defaults.color = mutedColor;
 
   _charts.tipo = new Chart(document.getElementById('chartTipo'), {
     type: 'doughnut',
-    data: { labels: tipoArr.map(t => t.nome), datasets: [{ data: tipoArr.map(t => t.count), backgroundColor: palette, borderColor: '#111A2E', borderWidth: 2 }] },
+    data: { labels: tipoArr.map(t => t.nome), datasets: [{ data: tipoArr.map(t => t.count), backgroundColor: palette, borderColor: panelColor, borderWidth: 2 }] },
     options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }, maintainAspectRatio: false }
   });
 
   _charts.placas = new Chart(document.getElementById('chartPlacas'), {
     type: 'bar',
     data: { labels: placaArr.map(p => p.nome), datasets: [{ data: placaArr.map(p => p.count), backgroundColor: '#F2A33C', borderRadius: 4 }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(255,255,255,0.05)' } } }, maintainAspectRatio: false }
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: rootStyles.getPropertyValue('--line').trim() || 'rgba(255,255,255,0.05)' } } }, maintainAspectRatio: false }
   });
 
   _charts.dia = new Chart(document.getElementById('chartDia'), {
     type: 'line',
     data: { labels: diaArr.map(d => d.data), datasets: [{ data: diaArr.map(d => d.count), borderColor: '#36C2B4', backgroundColor: 'rgba(54,194,180,0.15)', fill: true, tension: 0.3, pointRadius: 3 }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(255,255,255,0.05)' } } }, maintainAspectRatio: false }
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: rootStyles.getPropertyValue('--line').trim() || 'rgba(255,255,255,0.05)' } } }, maintainAspectRatio: false }
   });
 }
 
@@ -484,6 +487,7 @@ window.AppDadosTable = { renderDadosTable };
         }
 
         currentData = parsed;
+        window.__currentAlertData = parsed;
         window.AppDashboard.renderDashboard(parsed);
         window.AppDadosTable.renderDadosTable(parsed);
 
@@ -617,4 +621,41 @@ window.AppDadosTable = { renderDadosTable };
   }
 
   for (let i = 0; i < MAX_BUBBLES; i++) spawnBubble();
+})();
+
+
+
+/**
+ * Alternância de tema claro/escuro, com preferência salva no navegador.
+ */
+(function () {
+  const toggleBtn = document.getElementById('themeToggle');
+  if (!toggleBtn) return;
+  const root = document.documentElement;
+
+  function applyTheme(theme) {
+    if (theme === 'light') {
+      root.setAttribute('data-theme', 'light');
+      toggleBtn.textContent = '☀️';
+    } else {
+      root.removeAttribute('data-theme');
+      toggleBtn.textContent = '🌙';
+    }
+  }
+
+  let saved = null;
+  try { saved = localStorage.getItem('painel-tema'); } catch (e) { /* sem acesso a storage */ }
+  const preferLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  applyTheme(saved || (preferLight ? 'light' : 'dark'));
+
+  toggleBtn.addEventListener('click', () => {
+    const isLight = root.getAttribute('data-theme') === 'light';
+    const next = isLight ? 'dark' : 'light';
+    applyTheme(next);
+    try { localStorage.setItem('painel-tema', next); } catch (e) { /* ignora se bloqueado */ }
+    // re-renderiza os gráficos pra pegarem as cores do novo tema
+    if (window.__currentAlertData && window.AppDashboard) {
+      window.AppDashboard.renderDashboard(window.__currentAlertData);
+    }
+  });
 })();
