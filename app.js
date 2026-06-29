@@ -194,9 +194,11 @@ function groupByDia(data) {
   data.forEach(a => {
     if (!a.dataAlerta) return;
     const key = a.dataAlerta.toLocaleDateString('pt-BR');
-    map[key] = (map[key] || 0) + 1;
+    if (!map[key]) map[key] = { count: 0, tratados: 0 };
+    map[key].count++;
+    if (a.tratado) map[key].tratados++;
   });
-  return Object.entries(map).map(([data_, count]) => ({ data: data_, count }))
+  return Object.entries(map).map(([data_, v]) => ({ data: data_, count: v.count, tratados: v.tratados }))
     .sort((a, b) => {
       const [da, ma, ya] = a.data.split('/');
       const [db, mb, yb] = b.data.split('/');
@@ -288,8 +290,14 @@ function drawCharts(tipoArr, placaArr, diaArr) {
 
   _charts.dia = new Chart(document.getElementById('chartDia'), {
     type: 'line',
-    data: { labels: diaArr.map(d => d.data), datasets: [{ data: diaArr.map(d => d.count), borderColor: '#36C2B4', backgroundColor: 'rgba(54,194,180,0.15)', fill: true, tension: 0.3, pointRadius: 3 }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: rootStyles.getPropertyValue('--line').trim() || 'rgba(255,255,255,0.05)' } } }, maintainAspectRatio: false }
+    data: {
+      labels: diaArr.map(d => d.data),
+      datasets: [
+        { label: 'Alertas', data: diaArr.map(d => d.count), borderColor: '#5B8DEF', backgroundColor: 'rgba(91,141,239,0.12)', fill: true, tension: 0.3, pointRadius: 3 },
+        { label: 'Tratados', data: diaArr.map(d => d.tratados), borderColor: '#36C2B4', backgroundColor: 'rgba(54,194,180,0.12)', fill: true, tension: 0.3, pointRadius: 3 },
+      ]
+    },
+    options: { plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 10, font: { size: 11 } } } }, scales: { x: { grid: { display: false } }, y: { grid: { color: rootStyles.getPropertyValue('--line').trim() || 'rgba(255,255,255,0.05)' } } }, maintainAspectRatio: false }
   });
 }
 
@@ -688,12 +696,12 @@ window.AppDadosTable = { renderDadosTable };
     const all = window.__currentAlertData || [];
     const ini = parseInputDate(dataIni.value, false);
     const fim = parseInputDate(dataFim.value, true);
-    const placa = selectPlaca.value;
+    const placa = (selectPlaca.value || '').trim().toUpperCase();
 
     const filtered = all.filter(a => {
       if (ini && (!a.dataAlerta || a.dataAlerta < ini)) return false;
       if (fim && (!a.dataAlerta || a.dataAlerta > fim)) return false;
-      if (placa && a.placa !== placa) return false;
+      if (placa && !String(a.placa || '').toUpperCase().includes(placa)) return false;
       return true;
     });
 
@@ -703,7 +711,7 @@ window.AppDadosTable = { renderDadosTable };
 
   dataIni.addEventListener('change', () => { const sel = document.getElementById('filtroPeriodoRapido'); if (sel) sel.value = ''; applyFilters(); });
   dataFim.addEventListener('change', () => { const sel = document.getElementById('filtroPeriodoRapido'); if (sel) sel.value = ''; applyFilters(); });
-  selectPlaca.addEventListener('change', applyFilters);
+  selectPlaca.addEventListener('input', applyFilters);
   btnLimpar.addEventListener('click', () => {
     dataIni.value = '';
     dataFim.value = '';
@@ -718,10 +726,26 @@ window.AppDadosTable = { renderDadosTable };
     return `${y}-${m}-${day}`;
   }
 
+  function startOfWeek(d) {
+    const r = new Date(d);
+    const diff = (r.getDay() + 6) % 7; // segunda-feira como início da semana
+    r.setDate(r.getDate() - diff);
+    r.setHours(0, 0, 0, 0);
+    return r;
+  }
+
   function computeRange(key) {
     const now = new Date();
     let ini, fim;
     switch (key) {
+      case 'semana-atual':
+        ini = startOfWeek(now);
+        fim = new Date(ini); fim.setDate(fim.getDate() + 6);
+        break;
+      case 'semana-anterior':
+        fim = new Date(startOfWeek(now)); fim.setDate(fim.getDate() - 1);
+        ini = new Date(fim); ini.setDate(ini.getDate() - 6);
+        break;
       case 'mes-atual':
         ini = new Date(now.getFullYear(), now.getMonth(), 1);
         fim = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -730,18 +754,6 @@ window.AppDadosTable = { renderDadosTable };
         ini = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         fim = new Date(now.getFullYear(), now.getMonth(), 0);
         break;
-      case 'trimestre-atual': {
-        const tStart = Math.floor(now.getMonth() / 3) * 3;
-        ini = new Date(now.getFullYear(), tStart, 1);
-        fim = new Date(now.getFullYear(), tStart + 3, 0);
-        break;
-      }
-      case 'semestre-atual': {
-        const sStart = now.getMonth() < 6 ? 0 : 6;
-        ini = new Date(now.getFullYear(), sStart, 1);
-        fim = new Date(now.getFullYear(), sStart + 6, 0);
-        break;
-      }
       case 'ano-atual':
         ini = new Date(now.getFullYear(), 0, 1);
         fim = new Date(now.getFullYear(), 11, 31);
@@ -775,13 +787,14 @@ window.AppDadosTable = { renderDadosTable };
 })();
 
 /**
- * Preenche o seletor de placas com as placas únicas da planilha carregada.
+ * Preenche as sugestões (datalist) do campo digitável de placa
+ * com as placas únicas da planilha carregada.
  */
 function populateFiltroPlaca(data) {
-  const select = document.getElementById('filtroPlaca');
-  if (!select) return;
+  const list = document.getElementById('placaList');
+  if (!list) return;
   const placas = Array.from(new Set(data.map(a => a.placa).filter(Boolean))).sort();
-  select.innerHTML = '<option value="">Todas</option>' + placas.map(p => `<option value="${p}">${p}</option>`).join('');
+  list.innerHTML = placas.map(p => `<option value="${p}"></option>`).join('');
 }
 
 function resetFiltrosInputs() {
